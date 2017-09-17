@@ -4,66 +4,115 @@
 var _ = require("lodash");
 
 
-function run(){
-    var state = new State()
-    var retVal =  exec(state, script);
-    console.log("state:", state);
-    console.log("retVal", retVal);
-};
 
-var script = 
-{seq:[
-    {set:"a",to:5},
-    {tick:1},
-    {set:"b",to:"a"},
-    {set:"c",to:{call:(a,mult)=>a*mult, with:["a", 100]}},
-    {
-        set:"nested",
-        to:{
-            call:(n, a,mult)=>n*a*mult, 
-            with:[{call:(b,c) => b+c,with:["b", "c"]} ,"a", 100]}
-            },
-    {
-        if:{call: a=> a == 5, with:["a"]},
-        then:{set:"a", to:10}
-    },
-    {set: "i", to:1},
-    {
-        while: {call:i=>i<10, with:"i"},
-        do:{set:"i", to:{call: i => i*2, with:["i"]}}
-    },
-    {return: "a"}
-    ]
-};
+var END = "end";
+
+function ProgramState(source){
     
-    
-function State(){
-    this.vars = {};
-};
-    
-function exec(state, statement){
-    if (statement.seq != null){
-        _.forEach(statement.seq, stmt => exec(state, stmt));
-    }else if (typeof statement == 'number'){
-        return statement;
-    }else if (typeof statement == 'string'){
-        return state.vars[statement];        
-    }else if (statement.set != null){
-        state.vars[statement.set] = exec(state, statement.to);
-    }else if (statement.if != null){
-        var cond = exec(state, statement.if);
-        if (cond){
-            exec(state, statement.then);
+    this.next = function(){
+        var stmt = this.findStatementAt(this.position);
+        var result = undefined;
+        if (stmt.set){
+            this.vars[stmt.set] = this.eval(stmt.to)
+        }else if (stmt.call){
+            
+        
+        }else {
+            console.log("unhandled statement: ",stmt);
+            throw "unhandled statement";
         }
-    }else if (statement.while != null){
-        while (exec(state, statement.while)){
-            exec(state, statement.do);
-        }    
-    }else if (statement.call != null){
-        var args = _.map(statement.with, a => exec(state, a))
-        return statement.call.apply(null, args);
+        
+        this.incrementPosition(result);
+        this.lastresult = result;
+    };
+    
+    this.findStatementAt = function(position){
+        var stmt = this.source;
+        for (var i = 0;i<position.length;i++){
+            var direction = position[i];
+            if (direction == END){
+                return null;
+            }else if (direction.seq != null){
+                stmt = stmt.seq[direction.seq];
+            }else{
+                console.log("unexpected position-direction: "+direction)
+            }
+        }
+        return stmt;
     }
-}
+    
+    this.eval = function(expr){
+        if (typeof expr == 'number'){
+            return expr;
+        }else{
+            throw "Can't handle "+expr;
+        }
+    };
+    
+    this.validPosition = function(){
+        var stmt = this.findStatementAt(this.position);
+        if (stmt.seq != null){
+            return false;
+        }else if (stmt.call != null){
+            //Make sure all arguments have already been evaluated.
+            return stmt.with == undefined || stmt.with.length == this.position.args.length;
+        }
+        return true;
+    }
+    
+    this.incrementPosition = function(result){
+
+        var moved = false;
+        while (!moved){       
+            var currentDir = this.position[this.position.length-1];
+            if (currentDir === undefined){
+                //We popped the whole stack, programm done.
+                this.position = END;
+                moved = true;                
+            }else if (currentDir.seq != null){
+                if (currentDir.seq < currentDir.of-1){
+                    currentDir.seq += 1;
+                    moved = true;
+                }else{                    
+                    this.position.pop();
+                }
+            }else if (currentDir.args != null){
+                if (currentDir.args.length < currentDir.args.of){
+                    //We just evaluated an argument.
+                    if (result === undefined){
+                        throw "Attempted to put undefined in argument-list"
+                    }
+                    currentDir.args.push(result);     
+                    moved = true;                    
+                }else{
+                    //We just finished calling the function.
+                    this.position.pop();                    
+                }
+            }else{
+                console.log("incrementPosition: unexpected position-direction: ", currentDir);
+                throw "unexpected position-direction";
+            }
+        }
+    
+        while (this.position != END && !this.validPosition()){
+            var stmt = this.findStatementAt(this.position);
+            if (stmt.seq != null){
+                this.position.push({seq:0,of:stmt.seq.length});
+            }else{
+                throw "Can't handle "+stmt;
+            }
+        }
+    };
+    
+    if (source.seq == undefined){
+        source = {seq:[source]}
+    }
+    this.source = source;
+    this.vars = {};
+    this.position = [{seq:-1, of:this.source.seq.length}];
+    this.incrementPosition();
+    this.lastresult = undefined;
+}    
 
 // module.exports = {
     // run:run,
