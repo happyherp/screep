@@ -15,8 +15,11 @@ function ProgramState(source){
         if (stmt.set){
             this.vars[stmt.set] = this.eval(stmt.to)
         }else if (stmt.call){
-            
-        
+            var args = this.position.args;
+            if (stmt.with != null && stmt.with.length != this.position.args.length){
+                throw "Args have not been evaluated"
+            }
+            result = stmt.call.apply(null, args);        
         }else {
             console.log("unhandled statement: ",stmt);
             throw "unhandled statement";
@@ -34,14 +37,22 @@ function ProgramState(source){
                 return null;
             }else if (direction.seq != null){
                 stmt = stmt.seq[direction.seq];
+            }else if (direction.args != null){
+                if (direction.args.length == stmt.with.length){
+                    //Just use that statement.
+                }else{
+                    //Evaluate arguments
+                    stmt = stmt.with[direction.args.length];
+                }
             }else{
-                console.log("unexpected position-direction: "+direction)
+                console.log("unexpected position-direction: ",direction);
+                throw "unexpected position-direction";
             }
         }
         return stmt;
     }
     
-    this.eval = function(expr){
+
         if (typeof expr == 'number'){
             return expr;
         }else{
@@ -50,14 +61,23 @@ function ProgramState(source){
     };
     
     this.validPosition = function(){
+        var lastPos = this.position[this.position.length-1];
         var stmt = this.findStatementAt(this.position);
         if (stmt.seq != null){
             return false;
         }else if (stmt.call != null){
-            //Make sure all arguments have already been evaluated.
-            return stmt.with == undefined || stmt.with.length == this.position.args.length;
+            if (lastPos.args != null){
+                //Make sure all arguments have already been evaluated.
+                return stmt.with == undefined 
+                    || stmt.with.lengthf* == lastPos.args.length;
+            }else{
+                return false;
+            }
+        }else if (stmt.set != null ){
+            return true
+        }else{
+            throw "did not handle case of "+stmt;
         }
-        return true;
     }
     
     this.incrementPosition = function(result){
@@ -98,6 +118,11 @@ function ProgramState(source){
             var stmt = this.findStatementAt(this.position);
             if (stmt.seq != null){
                 this.position.push({seq:0,of:stmt.seq.length});
+            }else if (stmt.call != null){
+                if (stmt.with == null){
+                    stmt.with = [];
+                }
+                this.position.push({args:[],of:stmt.with.length});                    
             }else{
                 throw "Can't handle "+stmt;
             }
