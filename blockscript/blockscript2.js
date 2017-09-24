@@ -1,4 +1,10 @@
 
+
+function inherit(subclass, superclass){
+    subclass.prototype = Object.create(superclass.prototype);
+    subclass.prototype.constructor = subclass;
+}
+
 //Used for js-methods to access variables
 v = {};
 
@@ -12,6 +18,7 @@ function Context(source){
     this.source = source;
 }
 
+//For indirectly referencing an instruction.
 function InstructionRootRef(){
 }
 InstructionRootRef.prototype.get = function(context){
@@ -88,17 +95,58 @@ function runSerialized(instruction){
         var reloaded = fromJSON(json);
         exec = reloaded.exec;
         context = reloaded.context;
+        context.source = instruction; //Source-Code should bypass serialization. It does not change anyways.
         exec.doStep(context);
     }
     return exec.retVal;
 }
 
+    
 function toJSON(obj){
+    setProtoMarker(obj, []);
+    
     return JSON.stringify(obj);
 }
 
+
+function setProtoMarker(obj, seen){
+    if (obj != null && !seen.includes(obj)){
+        seen.push(obj);
+        if ( obj.__proto__ != null 
+            && obj.__proto__.constructor != null
+            && !["String", "Number", "Object", "Array"].includes(
+                obj.__proto__.constructor.name) ){
+            obj.protoname = obj.__proto__.constructor.name;
+        }
+        for (var key in obj){
+            setProtoMarker(obj[key], seen);
+        }
+    }
+}
+
 function fromJSON(obj){
-    return JSON.parse(obj);
+    return revive(JSON.parse(obj));    
+}
+
+function revive(obj){
+    if (obj != null && obj.__proto__ != null 
+            && obj.__proto__.constructor != null
+            && !["String", "Number"].includes(
+                obj.__proto__.constructor.name)){               
+    
+        var newobj = obj;
+    
+        if (obj.protoname != null){
+            newobj = Object.create(eval(obj.protoname).prototype);
+            obj.protoname = undefined;
+        }  
+        
+        for (var key in obj){
+            newobj[key] = revive(obj[key]);
+        }
+        obj = newobj;
+    }
+    return obj;
 }
 
 function Execution(instructionRef){
@@ -131,7 +179,8 @@ Execution.prototype.isDone = function(){
 function SimpleValueExecution(instructionRef){
     Execution.call(this, instructionRef);    
 }
-SimpleValueExecution.prototype = Object.create(Execution.prototype);
+
+inherit(SimpleValueExecution, Execution);
 
 SimpleValueExecution.prototype.doStep = function(context){
     this.retVal = this.instructionRef.get(context);
@@ -143,7 +192,7 @@ function IfExecution(instructionRef){
     Execution.call(this, instructionRef);
 }
 
-IfExecution.prototype = Object.create(Execution.prototype);
+inherit(IfExecution, Execution);
 
 IfExecution.prototype.doStepNoSub = function(context){
     
@@ -173,8 +222,8 @@ IfExecution.prototype.doStepNoSub = function(context){
 function WhileExecution(instructionRef){
     Execution.call(this, instructionRef);
 }
-WhileExecution.prototype = Object.create(Execution.prototype);
 
+inherit(WhileExecution, Execution);
 
 WhileExecution.prototype.doStepNoSub = function(context){
     
@@ -201,8 +250,8 @@ WhileExecution.prototype.doStepNoSub = function(context){
 SetExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
-SetExecution.prototype = Object.create(Execution.prototype);
 
+inherit(SetExecution, Execution);
 
 SetExecution.prototype.doStepNoSub = function(context){
     if (this.state == "start"){
@@ -222,7 +271,7 @@ RefExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
 
-RefExecution.prototype = Object.create(Execution.prototype);
+inherit(RefExecution, Execution);
 
 RefExecution.prototype.doStepNoSub = function(context){
     this.state = "done";
@@ -235,8 +284,8 @@ RefExecution.prototype.doStepNoSub = function(context){
 SeqExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
-SeqExecution.prototype = Object.create(Execution.prototype);
 
+inherit(SeqExecution, Execution);
 
 SeqExecution.prototype.doStepNoSub = function(context){
     if (this.state == "start"){
@@ -262,7 +311,7 @@ CallJSExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
 
-CallJSExecution.prototype = Object.create(Execution.prototype);
+inherit(CallJSExecution, Execution);
 
 CallJSExecution.prototype.doStepNoSub = function(context){
     if (this.state == "start"){
@@ -295,7 +344,8 @@ CallJSExecution.prototype.doStepNoSub = function(context){
 TickExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
-TickExecution.prototype = Object.create(Execution.prototype);
+
+inherit(TickExecution, Execution);
 
 TickExecution.prototype.doStep = function(context){
     this.state = "done";
@@ -304,7 +354,8 @@ TickExecution.prototype.doStep = function(context){
 LambdaExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
-LambdaExecution.prototype = Object.create(Execution.prototype);
+
+inherit(LambdaExecution, Execution);
 
 LambdaExecution.prototype.doStepNoSub = function(context){
     this.retVal = {
@@ -317,7 +368,7 @@ CallNativeExecution = function(instructionRef){
     Execution.call(this, instructionRef);
 }
 
-CallNativeExecution.prototype = Object.create(Execution.prototype);
+inherit(CallNativeExecution, Execution);
 
 CallNativeExecution.prototype.doStep = function(context){
     if (this.state == "start"){

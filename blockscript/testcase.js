@@ -10,3 +10,36 @@ testIt = function(){
     
     console.log("serialized", runSerialized(script) == 10);
 }
+
+
+
+function A(){
+    this.val = 3;
+}
+
+A.prototype.aonly = "abc"
+A.prototype.s = "in A";
+
+a = new A();
+
+function B(){
+    A.call(this);
+}
+
+B.prototype = Object.create(A.prototype);
+B.prototype.constructor = B;
+B.prototype.bonly = "abc";
+B.prototype.s = "in B";
+
+
+b = new B()
+
+function C(){
+    B.call(this);
+}
+
+C.prototype = Object.create(B.prototype);
+C.prototype.constructor = C;
+C.prototype.conly = "abc"
+C.prototype.s = "in C";
+c = new C();
