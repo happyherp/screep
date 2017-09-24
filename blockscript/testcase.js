@@ -8,5 +8,5 @@ testIt = function(){
     console.log("scriptImplicitSeq",run(scriptImplicitSeq) == 16);
     console.log("scriptImplicitJS",run(scriptImplicitJS) == 123);
     
-    console.log("")
+    console.log("serialized", runSerialized(script) == 10);
 }
