@@ -1,3 +1,7 @@
+
+//Used for js-methods to access variables
+v = {};
+
 function isTrue(val){
     return val;
 }
@@ -20,6 +24,17 @@ function beginExecution(instruction){
         }                        
         throw ["Unknown instruction ", instruction];
     }
+}
+
+
+function run(instruction){
+    var context = new Context();
+    
+    var exec =  beginExecution(instruction);
+    while (!exec.isDone()){
+        exec.doStep(context);
+    }
+    return exec.retVal;
 }
 
 
@@ -207,6 +222,7 @@ CallJSExecution.prototype.doStepNoSub = function(context){
             this.state = "call";
         }
     }else if (this.state == "call"){
+        v = context.vars;
         this.retVal =  this.instruction.call.apply(null, this.argValues);
         this.state = "done";             
     }else{

@@ -73,6 +73,14 @@ var scriptCallMult = {
     call:(a,b)=>a*b, with:[4,3]
 };
 
+var scriptVarFromJS = {seq:
+    [
+        {set:"x", to:3},
+        {set:"y", to:4},
+        {call:()=>v.x*v.y}
+    ]
+};
+
 var scriptCallNested = {
     call:(a,b)=>a*b, with:[4,{call:a=> a-1, with: [4]}]
 };
@@ -83,7 +91,8 @@ var scriptLoop={
         {
             while:{call:x=>x<10, with:["i"]},
             do:{set:"i", to: {call:x=>x*2, with:["i"]}}
-        }                
+        },
+        "i"        
     ]
 };
     
@@ -95,28 +104,7 @@ var scriptReassign={
     ]
 }    
 
-function run(){
-    var state = new State()
-    var retVal =  exec(state, script);
-    console.log("state:", state);
-    console.log("retVal", retVal);
-};
 
-
-function run2(script){
-    if (script == null){
-        script = scriptSeq;
-    }
-    var state = new ProgramState(script);
-    console.log("starting: ", _.cloneDeep(state));
-    var i = 0;
-    while (state.position != END && i < 100){
-        state.next();
-        console.log("did a step: ", _.cloneDeep(state));
-        i++;
-    }
-    console.log("lastresult: ",state.lastresult)
-}    
 
 function run3(script){
     if (script == null){
