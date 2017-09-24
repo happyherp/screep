@@ -104,7 +104,22 @@ var scriptReassign={
     ]
 }    
 
+var scriptImplicitSeq=
+[
+    {set:"x", to:1},
+    {
+        while:{call:()=>v.x < 10},
+        do:[
+            {set:"y",to:"x"},
+            {set:"x", to:{call:()=>v.x+v.y}}
+        ]
+    },
+    "x"    
+]
 
+var scriptImplicitJS=[
+{set:"x", to:()=>123}
+]
 
 function run3(script){
     if (script == null){

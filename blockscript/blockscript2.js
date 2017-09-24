@@ -12,6 +12,16 @@ function Context(){
 }
 
 function beginExecution(instruction){
+    
+    //Replacements
+    if (instruction instanceof Array){
+        instruction = {seq:instruction};
+    }else if (typeof instruction =="function"){
+        instruction = {call:instruction};
+    }
+    
+    
+    
     if (["number", "boolean"].includes(typeof instruction)){
         return new SimpleValueExecution(instruction);
     }else if (typeof instruction == "string"){
@@ -291,7 +301,6 @@ CallNativeExecution.prototype.doStep = function(context){
                 throw "Numbers of arguments in call did not match number of arguments of functions. ";
             }
             this.subcontext = new Context();
-            //this.subcontext.vars = _.cloneDeep(this.subexecution.retVal.context.vars);
             this.subcontext.vars.__proto__ = this.subexecution.retVal.context.vars;
             for (var i = 0;i<varnames.length;i++){
                 this.subcontext.vars[varnames[i]] = this.argValues[i];
