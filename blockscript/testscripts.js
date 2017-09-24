@@ -25,6 +25,35 @@ var script =
     ]
 };
 
+var scriptPlus = {seq:[
+    {set:"+", to:{lambda:["x", "y"], is:{call:(x,y) => x+y, with:["x", "y"]}}},
+    {callX:"+", with:[4,9]}
+]};
+
+var scriptFak = {seq: [
+    {
+        set:"fak", 
+        to:{
+            lambda:["x"], 
+            is: {
+                if: {call:x=>x==1,with:["x"]}, 
+                then:1, 
+                else: {
+                    call:(x,r)=>x*r, 
+                    with:[
+                        "x", 
+                        {
+                            callX:"fak", 
+                            with: [{call: x=>x-1,with:["x"]}]
+                        }
+                    ]}
+            },
+        }
+    },
+    {callX:"fak", with:[5]}
+    ]
+};
+
 var scriptSeq = {
     seq:[
        {set:"a", to:2},
