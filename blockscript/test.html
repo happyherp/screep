@@ -18,16 +18,26 @@
 </table>
 
 <script>
-
     
-    var table = document.getElementById("testtable");
-    tests.forEach(test=> {
+    function addResult(name, ok){
+        var table = document.getElementById("testtable");
         var tr = document.createElement("tr");
         tr.innerHTML = (
-            "<td>"+test.name+"</td>"
-            +"<td>"+(test.test ? "OK":"FAIL")+"</td>");
+            "<td>"+name+"</td>"
+            +"<td>"+(ok?"PASS":"FAIL")+"</td>");
         table.lastChild.appendChild(tr);
-    });    
+    }
+
+    tests.forEach(t=> {
+        if (t.serialize == null){
+            runAsync(t.script, result=>{
+                addResult(t.name, t.expected == result);
+            });
+        }else{
+            var result = runSerialized(t.script);
+            addResult(t.name, t.expected == result);
+        }
+    });        
 
 </script>
 

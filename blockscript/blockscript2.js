@@ -12,10 +12,60 @@ function isTrue(val){
     return val;
 }
 
-
+/**
+* Kind of represents a thread.
+*/
 function Context(source){
     this.vars = {}
     this.source = source;
+    this.state = "created";// created|running|waitingForCallback|error
+    this.step = 0;
+    this.steplimit = 10 * 1000;
+    this.rootExec = null;
+    this.onDone = null;//Function to be called after execution is done.
+}
+
+Context.prototype.start = function(){
+    if (this.state == "created"){
+        this.rootExec = beginExecution(this, new InstructionRootRef());
+        this.state = "running";
+        return this.run();
+    }else{
+        throw "State must be created. was "+this.state;
+    }
+}
+
+Context.prototype.run = function(){
+    if (this.state == "running"){
+        while (!this.rootExec.isDone() && this.step<this.steplimit && this.state == "running"){
+            this.rootExec.doStep(this);
+            this.step++;
+        }
+        //console.log("Left run-loop");
+        if (this.step==this.steplimit){
+            console.log("cancelled execution after ", this.step, "step", this);
+            this.state = "error"
+        }else if (this.rootExec.isDone()){
+            this.state = "done";
+            var result = this.rootExec.retVal;
+            if (this.onDone != null){
+                this.onDone(result);
+            }
+            return result;
+        }        
+    }else{
+        throw "State must be 'running'. was "+this.state;
+    }
+    return "this method sometimes does not return something because running will happen in a callback. getting the return from that callback is not supported yet.";
+}
+
+Context.prototype.continue = function(){
+    if (this.state == "waitingForCallback"){
+        this.state = "running";
+        this.run();
+    }else{
+        throw "Invalid state. was "+this.state;
+    }
 }
 
 //For indirectly referencing an instruction.
@@ -75,15 +125,18 @@ function beginExecution(context, instructionRef){
     return new constructor(instructionRef);
 }
 
+//Kinda deprecated.
 function run(instruction){
     var context = new Context(instruction);
-    
-    var exec =  beginExecution(context, new InstructionRootRef());
-    while (!exec.isDone()){
-        exec.doStep(context);
-    }
-    return exec.retVal;
+    return context.start();
 }
+
+function runAsync(script, onDone){
+    var context = new Context(script);
+    context.onDone = onDone;
+    context.start();
+}
+
 
 function runSerialized(instruction){
     
@@ -424,6 +477,29 @@ CallNativeExecution.prototype.doStep = function(context){
     }
 }
 
+SyncExecution = function(instructionRef){
+    Execution.call(this, instructionRef);
+}
+inherit(SyncExecution, Execution);
+SyncExecution.prototype.doStep = function(context){
+    if (this.state == "start"){
+        this.state = "waitingForCallback  ";
+        var asyncFunction = this.instructionRef.get(context).sync
+        if (typeof asyncFunction != "function"){
+            throw [ "Sync must be a function, was", asyncFunction]
+        }
+        context.state = "waitingForCallback";
+        asyncFunction(()=>{
+            this.retVal = arguments;
+            this.state = "done";
+            context.continue();
+        });       
+    }else if (this.state == "waitingForCallback"){
+        throw "tried to do a Step, but we are waiting for a callback";
+    }else{
+        throw ["Invalid State", this.state];
+    }
+}
 
 
 keyToExecuter = {
@@ -434,5 +510,6 @@ keyToExecuter = {
     call:CallJSExecution,
     callX:CallNativeExecution,
     tick:TickExecution,
-    lambda:LambdaExecution 
+    lambda:LambdaExecution,
+    sync:SyncExecution
 }

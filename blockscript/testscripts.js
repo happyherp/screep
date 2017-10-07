@@ -121,6 +121,16 @@ var scriptImplicitJS=[
 {set:"x", to:()=>123}
 ]
 
+
+var scriptTimeoutSync=[
+    {set:"start", to:()=>new Date().getTime()},
+    {sync:(callback)=>window.setTimeout(callback,100)},
+    {set:"end", to:()=>new Date().getTime()},
+    {set:"diff", to:()=>v.end-v.start},
+    ()=>console.log(v.diff),
+    ()=>v.diff >= 100
+]
+
 function run3(script){
     if (script == null){
         script = scriptSeq;
