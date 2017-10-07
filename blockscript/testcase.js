@@ -1,45 +1,18 @@
 
+tests = [
+    {name:"fak", test: run(scriptFak) == 120},
+    {name:"reassign", test: run(scriptReassign) == 4},
+    {name:"loop", test:run(scriptLoop) == 16},
+    {name:"script", test:run(script) == 10},
+    {name:"varFromJs", test:run(scriptVarFromJS) == 12},
+    {name:"scriptImplicitSeq", test:run(scriptImplicitSeq) == 16},
+    {name:"scriptImplicitJS", test:run(scriptImplicitJS) == 123},    
+    {name:"serialized", test: runSerialized(script) == 10},
+]
+
+
 testIt = function(){
-    console.log("fak", run(scriptFak) == 120);
-    console.log("reassign", run(scriptReassign) == 4);
-    console.log("loop",run(scriptLoop) == 16);
-    console.log("script",run(script) == 10);
-    console.log("varFromJs",run(scriptVarFromJS) == 12);
-    console.log("scriptImplicitSeq",run(scriptImplicitSeq) == 16);
-    console.log("scriptImplicitJS",run(scriptImplicitJS) == 123);
-    
-    console.log("serialized", runSerialized(script) == 10);
+
+    tests.forEach(t=> console.log(t.name, t.test));    
+   
 }
-
-
-
-function A(){
-    this.val = 3;
-}
-
-A.prototype.aonly = "abc"
-A.prototype.s = "in A";
-
-a = new A();
-
-function B(){
-    A.call(this);
-}
-
-B.prototype = Object.create(A.prototype);
-B.prototype.constructor = B;
-B.prototype.bonly = "abc";
-B.prototype.s = "in B";
-
-
-b = new B()
-
-function C(){
-    B.call(this);
-}
-
-C.prototype = Object.create(B.prototype);
-C.prototype.constructor = C;
-C.prototype.conly = "abc"
-C.prototype.s = "in C";
-c = new C();

@@ -10,5 +10,26 @@
     <script src="testcase.js" ></script>
 </head>
 <body>
+
+<h1>Tests</h1>
+
+<table id="testtable">
+<tr><th>Name</th><th>Passes</th></tr>
+</table>
+
+<script>
+
+    
+    var table = document.getElementById("testtable");
+    tests.forEach(test=> {
+        var tr = document.createElement("tr");
+        tr.innerHTML = (
+            "<td>"+test.name+"</td>"
+            +"<td>"+(test.test ? "OK":"FAIL")+"</td>");
+        table.lastChild.appendChild(tr);
+    });    
+
+</script>
+
 </body>
 </html>
