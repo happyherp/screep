@@ -159,6 +159,15 @@ var scriptOuterScopeVarMod=[
    "outvar"
 ]
 
+var scriptCheckVarProtected=[
+    {set:"foo", to:{lambda:[],is:[{set:"notVisible", to:()=>7},4]}},
+    {callX: 
+        {lambda:["notVisible"],is:[
+            {callX:"foo"},
+            {if:()=>v.notVisible==1,then:1, else:2} ]},
+        with:[1]}
+]
+
 function run3(script){
     if (script == null){
         script = scriptSeq;

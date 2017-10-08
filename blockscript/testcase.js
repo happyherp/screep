@@ -14,7 +14,8 @@ tests = [
     {name:"TimeoutSync", script:scriptTimeoutSync, expected: true},
     {name:"NativeIf", script:scriptNativeIf, expected: 10},
     {name:"NativeIfCallbacks", script:scriptNativeIfCallbacks, expected:10},
-    {name:"OuterScopeVarMod", script:scriptOuterScopeVarMod, expected:3}
+    {name:"OuterScopeVarMod", script:scriptOuterScopeVarMod, expected:3},
+    {name:"CheckVarProtected", script:scriptCheckVarProtected, expected:1}
 ]
 
 testIt = function(){

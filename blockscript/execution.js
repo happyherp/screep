@@ -195,6 +195,8 @@ TickExecution = function(instructionRef){
 inherit(TickExecution, Execution);
 
 TickExecution.prototype.doStep = function(context){
+    //TODO: Um something should be done, right?
+    //Somehow notify the executing function. it needs to resume later on.
     this.state = "done";
 }
 
@@ -207,7 +209,7 @@ inherit(LambdaExecution, Execution);
 LambdaExecution.prototype.doStepNoSub = function(context){
     this.retVal = {
         instructionRef:this.instructionRef, //The instruction to be executed
-        context:context}; //The context in which this lambda was defined.
+        varscope:context.varscope}; //The varscope in which this lambda was defined.
     this.state = "done";
 }
 
@@ -250,12 +252,9 @@ CallNativeExecution.prototype.doStep = function(context){
             if (varnames.length != this.argValues.length){
                 throw "Numbers of arguments in call did not match number of arguments of functions. ";
             }
-            this.subcontext = new Context(context.source);
-            //TODO: I dont' think we should copy the whole
-            //Context, when all that is really different is the varscope...
-            this.subcontext.varscope = new VarScope(this.subexecution.retVal.context.varscope);
+            this.subvarscope = new VarScope(this.subexecution.retVal.varscope);
             for (var i = 0;i<varnames.length;i++){
-                this.subcontext.varscope.vars[varnames[i]] = this.argValues[i];
+                this.subvarscope.vars[varnames[i]] = this.argValues[i];
             }
             this.subexecution = beginExecution(context, subinstructionRef);            
         }else{
@@ -266,7 +265,7 @@ CallNativeExecution.prototype.doStep = function(context){
             this.retVal = this.subexecution.retVal;
             this.state = "done";
         }else{
-            this.subexecution.doStep(this.subcontext);
+            this.subexecution.doStep(new Context(context.thread, this.subvarscope));
         }
     }else{
         throw ["Invalid State", this.state];
@@ -284,11 +283,11 @@ SyncExecution.prototype.doStep = function(context){
         if (typeof asyncFunction != "function"){
             throw [ "Sync must be a function, was", asyncFunction]
         }
-        context.state = "waitingForCallback";
+        context.thread.state = "waitingForCallback";
         asyncFunction(()=>{
             this.retVal = arguments;
             this.state = "done";
-            context.continue();
+            context.thread.continue();
         });       
     }else if (this.state == "waitingForCallback"){
         throw "tried to do a Step, but we are waiting for a callback";

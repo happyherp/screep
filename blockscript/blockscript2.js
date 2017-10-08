@@ -7,22 +7,26 @@ function isTrue(val){
     return val;
 }
 
-/**
-* Kind of represents a thread.
-*/
-function Context(source){
-    this.varscope = new VarScope();
+
+function Context(thread, varscope){
+    this.thread = thread;
+    this.varscope = varscope;
+}
+
+
+function Thread(source){
     this.source = source;
     this.state = "created";// created|running|waitingForCallback|error
     this.step = 0;
     this.steplimit = 10 * 1000;
     this.rootExec = null;
+    this.rootVarScope = new VarScope();
     this.onDone = null;//Function to be called after execution is done.
 }
 
-Context.prototype.start = function(){
+Thread.prototype.start = function(){
     if (this.state == "created"){
-        this.rootExec = beginExecution(this, new InstructionRootRef());
+        this.rootExec = beginExecution(new Context(this, this.rootVarScope), new InstructionRootRef());
         this.state = "running";
         return this.run();
     }else{
@@ -30,10 +34,11 @@ Context.prototype.start = function(){
     }
 }
 
-Context.prototype.run = function(){
+Thread.prototype.run = function(){
     if (this.state == "running"){
+        var context = new Context(this, this.rootVarScope);
         while (!this.rootExec.isDone() && this.step<this.steplimit && this.state == "running"){
-            this.rootExec.doStep(this);
+            this.rootExec.doStep(context);
             this.step++;
         }
         //console.log("Left run-loop");
@@ -54,7 +59,7 @@ Context.prototype.run = function(){
     return "this method sometimes does not return something because running will happen in a callback. getting the return from that callback is not supported yet.";
 }
 
-Context.prototype.continue = function(){
+Thread.prototype.continue = function(){
     if (this.state == "waitingForCallback"){
         this.state = "running";
         this.run();
@@ -104,7 +109,7 @@ VarScope.prototype.flat = function(){
 function InstructionRootRef(){
 }
 InstructionRootRef.prototype.get = function(context){
-    return normalizeInstruction(context.source);
+    return normalizeInstruction(context.thread.source);
 }
 InstructionRootRef.prototype.subref = function(attr){
     return new InstructionSubRef([attr]);
@@ -115,7 +120,7 @@ InstructionSubRef = function(path){
 }
 
 InstructionSubRef.prototype.get = function(context){
-    var instruction = normalizeInstruction(context.source);
+    var instruction = normalizeInstruction(context.thread.source);
     for (var i = 0;i<this.path.length;i++){
         instruction = normalizeInstruction(instruction[this.path[i]],this.path[i]) ;
     }
@@ -172,29 +177,29 @@ function beginExecution(context, instructionRef){
 
 //Kinda deprecated.
 function run(instruction){
-    var context = new Context(instruction);
-    return context.start();
+    var thread = new Thread(instruction);
+    return context.thread();
 }
 
 function runAsync(script, onDone){
-    var context = new Context(script);
-    context.onDone = onDone;
-    context.start();
+    var thread = new Thread(script);
+    thread.onDone = onDone;
+    thread.start();
 }
 
 
 function runSerialized(instruction){
     
-    var context = new Context(instruction);
+    var thread = new Thread(instruction);
     
-    var exec =  beginExecution(context, new InstructionRootRef());
+    var exec =  beginExecution(new Context(thread, thread.rootVarScope), new InstructionRootRef());
     while (!exec.isDone()){
-        var json = toJSON({exec:exec, context:context});
+        var json = toJSON({exec:exec, thread:thread});
         var reloaded = fromJSON(json);
         exec = reloaded.exec;
-        context = reloaded.context;
-        context.source = instruction; //Source-Code should bypass serialization. It does not change anyways.
-        exec.doStep(context);
+        thread = reloaded.thread;
+        thread.source = instruction; //Source-Code should bypass serialization. It does not change anyways.
+        exec.doStep(new Context(thread, thread.rootVarScope));
     }
     return exec.retVal;
 }
