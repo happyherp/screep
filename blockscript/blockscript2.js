@@ -11,7 +11,7 @@ function isTrue(val){
 * Kind of represents a thread.
 */
 function Context(source){
-    this.vars = {}
+    this.varscope = new VarScope();
     this.source = source;
     this.state = "created";// created|running|waitingForCallback|error
     this.step = 0;
@@ -63,6 +63,43 @@ Context.prototype.continue = function(){
     }
 }
 
+
+VarScope = function(parentscope){
+    this.parentscope = parentscope;
+    this.vars = {};
+}
+
+VarScope.prototype.defines = function(name){
+    return this.vars[name] !== undefined 
+            || this.parentscope != null && this.parentscope.defines(name);
+}
+
+VarScope.prototype.get = function(name){
+    if (this.vars[name] !== undefined){
+        return this.vars[name];
+    }else if (this.parentscope != null){
+        return this.parentscope.get(name);
+    }else{
+        throw "can't find var with name: "+name;
+    }
+}
+
+VarScope.prototype.set = function(name, value){
+    if (this.parentscope != null && this.parentscope.defines(name)){
+        this.parentscope.set(name, value);
+    }else{
+        this.vars[name] = value;
+    }
+}
+
+VarScope.prototype.flat = function(){
+    if (this.parentscope){
+        return _.defaults(this.vars, this.parentscope.flat())    
+    }
+    return this.vars;    
+}
+
+
 //For indirectly referencing an instruction.
 function InstructionRootRef(){
 }
@@ -93,7 +130,7 @@ function normalizeInstruction(instruction, attr){
         instruction = {seq:instruction};
     }else if (typeof instruction =="function"){
         instruction = {call:instruction};
-    }    
+    }        
     return instruction
 }
 

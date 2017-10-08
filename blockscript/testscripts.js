@@ -131,6 +131,34 @@ var scriptTimeoutSync=[
     ()=>v.diff >= 100
 ]
 
+
+var scriptNativeIf=[
+  {set:"nIf", to:{
+      lambda:["cond", "then", "else"],
+      is: {if:"cond", then:"then", else:"else"}}},
+  {callX:"nIf", with:[true, 10, 25]}
+]
+
+var scriptNativeIfCallbacks=[
+    {set:"cif", to:{
+        lambda:["cond", "then", "else"],
+        is:{if:{callX:"cond"}, then:{callX:"then"}, else:{callX:"else"}}}},
+    {callX:"cif", with:[
+        {lambda:[], is:()=>false},
+        {lambda:[], is:()=>5},
+        {lambda:[], is:()=>10}
+        ]}
+]
+
+
+var scriptOuterScopeVarMod=[
+   {set:"outvar", to:1},
+   {set:"foo", to:{lambda:[],is:{set:"outvar", to:()=>v.outvar+1}}},
+   {callX:"foo"},
+   {callX:"foo"},
+   "outvar"
+]
+
 function run3(script){
     if (script == null){
         script = scriptSeq;

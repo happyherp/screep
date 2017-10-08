@@ -21,23 +21,28 @@
 
 <script>
     
-    function addResult(name, ok){
+    function addResult(name, result){
         var table = document.getElementById("testtable");
         var tr = document.createElement("tr");
         tr.innerHTML = (
             "<td>"+name+"</td>"
-            +"<td>"+(ok?"PASS":"FAIL")+"</td>");
+            +"<td>"+result+"</td>");
         table.lastChild.appendChild(tr);
     }
 
     tests.forEach(t=> {
-        if (t.serialize == null){
-            runAsync(t.script, result=>{
-                addResult(t.name, t.expected == result);
-            });
-        }else{
-            var result = runSerialized(t.script);
-            addResult(t.name, t.expected == result);
+        try{
+            if (t.serialize == null){
+                runAsync(t.script, result=>{
+                    addResult(t.name, t.expected == result?"PASS":"FAIL");
+                });
+            }else{
+                var result = runSerialized(t.script);
+                addResult(t.name, t.expected == result?"PASS":"FAIL");
+            }
+        }catch(e){
+            console.log("error on ", t.name, e);
+            addResult(t.name, "ERROR");
         }
     });        
 

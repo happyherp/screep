@@ -109,7 +109,7 @@ SetExecution.prototype.doStepNoSub = function(context){
         this.subexecution = beginExecution(context, this.instructionRef.subref("to"));
     }else if (this.state == "evaluating"){
         this.retVal = this.subexecution.retVal;
-        context.vars[this.instructionRef.get(context).set] = this.retVal;
+        context.varscope.set(this.instructionRef.get(context).set, this.retVal);
         this.subexecution = null;
         this.state = "done";
     }else{
@@ -125,10 +125,7 @@ inherit(RefExecution, Execution);
 
 RefExecution.prototype.doStepNoSub = function(context){
     this.state = "done";
-    this.retVal = context.vars[this.instructionRef.get(context)];
-    if (this.retVal === undefined){
-        throw "Can't access variable: "+this.instructionRef.get(context)
-    }
+    this.retVal = context.varscope.get(this.instructionRef.get(context));
 }
 
 SeqExecution = function(instructionRef){
@@ -183,7 +180,7 @@ CallJSExecution.prototype.doStepNoSub = function(context){
             this.state = "call";
         }
     }else if (this.state == "call"){
-        v = context.vars;
+        v = context.varscope.flat();
         this.retVal =  this.instructionRef.get(context).call.apply(null, this.argValues);
         this.state = "done";             
     }else{
@@ -214,8 +211,9 @@ LambdaExecution.prototype.doStepNoSub = function(context){
     this.state = "done";
 }
 
-CallNativeExecution = function(instructionRef){
+CallNativeExecution = function(instructionRef){    
     Execution.call(this, instructionRef);
+    this.argValues = []                
 }
 
 inherit(CallNativeExecution, Execution);
@@ -224,7 +222,6 @@ CallNativeExecution.prototype.doStep = function(context){
     if (this.state == "start"){
         if (this.instructionRef.get(context).with != null && this.instructionRef.get(context).with.length > 0){
             this.state = "evaluateArgs"
-            this.argValues = []            
             this.subexecution = beginExecution(context, 
                 this.instructionRef.subref("with").subref(0));
         }else{
@@ -254,9 +251,11 @@ CallNativeExecution.prototype.doStep = function(context){
                 throw "Numbers of arguments in call did not match number of arguments of functions. ";
             }
             this.subcontext = new Context(context.source);
-            this.subcontext.vars.__proto__ = this.subexecution.retVal.context.vars;
+            //TODO: I dont' think we should copy the whole
+            //Context, when all that is really different is the varscope...
+            this.subcontext.varscope = new VarScope(this.subexecution.retVal.context.varscope);
             for (var i = 0;i<varnames.length;i++){
-                this.subcontext.vars[varnames[i]] = this.argValues[i];
+                this.subcontext.varscope.vars[varnames[i]] = this.argValues[i];
             }
             this.subexecution = beginExecution(context, subinstructionRef);            
         }else{

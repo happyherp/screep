@@ -12,6 +12,9 @@ tests = [
     {name:"scriptImplicitJS", script:scriptImplicitJS, expected: 123},
     {name:"serialized", script: script, expected: 10, serialize:true},
     {name:"TimeoutSync", script:scriptTimeoutSync, expected: true},
+    {name:"NativeIf", script:scriptNativeIf, expected: 10},
+    {name:"NativeIfCallbacks", script:scriptNativeIfCallbacks, expected:10},
+    {name:"OuterScopeVarMod", script:scriptOuterScopeVarMod, expected:3}
 ]
 
 testIt = function(){
